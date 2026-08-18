@@ -1,1 +1,1 @@
-for to
+self.is_bos

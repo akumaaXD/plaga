@@ -132,10 +132,10 @@ GRID = [
     [1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,3,0,0,0,3,0,0,0,3,0,0,0,1,1,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
     [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,2,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
     [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,2,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,0,0,0,2,0,0,0,2,0,0,0,0,1,1,0,0,3,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
-    [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,1,1,1,1,0,0,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
-    [1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+    [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,1,1,1,1,0,0,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+    [1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
     [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
-    [1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,1,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,0,0,2,0,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,3,0,2,0,0,3,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+    [1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,1,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,0,0,2,0,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,3,0,2,0,0,3,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0,1,1],
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ]
 
@@ -221,16 +221,14 @@ def build_wall_rects():
 
 
 def build_enemy_spawns():
-
     normal_spawns = []
     ghoul_spawns = []
     tonic_spawns = []
     wolf_spawns = []
+    boss_spawns = []
 
     for r, row in enumerate(GRID):
-
         for c, cell in enumerate(row):
-
             x = c * TILE_SIZE
             y = r * TILE_SIZE
 
@@ -246,13 +244,16 @@ def build_enemy_spawns():
             elif cell == 5:
                 wolf_spawns.append((x, y))
 
+            elif cell == 9:
+                boss_spawns.append((x, y))
+
     return (
         normal_spawns,
         ghoul_spawns,
         tonic_spawns,
-        wolf_spawns
+        wolf_spawns,
+        boss_spawns
     )
-
 
 def lerp(a, b, t):
     return a + (b - a) * t
@@ -707,9 +708,155 @@ class Enemy:
 # ---------------------------------------------------------
 # Ghoul
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Boss
+# ---------------------------------------------------------
 
+BOSS_SPEED = 8
+BOSS_SCALE = 3
+BOSS_MAX_HEALTH = ENEMY_MAX_HEALTH * 10
+
+
+class Boss:
+
+    def __init__(self, x, y, image):
+
+        # Make boss 2x the normal enemy size
+        w = int((TILE_SIZE - 10) * BOSS_SCALE)
+        h = int((TILE_SIZE - 6) * BOSS_SCALE)
+
+        # Keep the boss standing on the same platform
+        self.rect = pygame.Rect(
+            x,
+            y + (TILE_SIZE - h),
+            w,
+            h
+        )
+
+        self.speed = BOSS_SPEED
+        self.direction = 1
+
+        self.image = pygame.transform.scale(
+            image,
+            (w, h)
+        )
+
+        # Health
+        self.max_health = BOSS_MAX_HEALTH
+        self.health = self.max_health
+        self.alive = True
+
+        # Used by the same knockback system as normal enemies
+        self.knockback_timer = 0.0
+        self.knockback_vel_x = 0.0
+
+        # Lets the attack code know this is the boss
+        self.is_boss = True
+        self.ghoul_spawn_timer = random.uniform(1, 4)
+
+    def update(self, walls):
+
+        dt = 1 / FPS
+
+        # Knockback
+        if self.knockback_timer > 0:
+            self.knockback_timer -= dt
+
+            self.rect.x += int(self.knockback_vel_x)
+
+            self.knockback_vel_x *= KNOCKBACK_FRICTION
+
+            for w in walls:
+                if self.rect.colliderect(w):
+
+                    if self.knockback_vel_x > 0:
+                        self.rect.right = w.left
+
+                    elif self.knockback_vel_x < 0:
+                        self.rect.left = w.right
+
+            return
+
+        # Normal patrol movement
+        move_x = self.speed * self.direction
+
+        next_rect = self.rect.move(move_x, 0)
+
+        hit_wall = any(
+            next_rect.colliderect(w)
+            for w in walls
+        )
+
+        foot_x = (
+            next_rect.right - 1
+            if self.direction > 0
+            else next_rect.left
+        )
+
+        probe = pygame.Rect(
+            foot_x,
+            self.rect.bottom + 2,
+            2,
+            4
+        )
+
+        ground_ahead = any(
+            probe.colliderect(w)
+            for w in walls
+        )
+
+        if hit_wall or not ground_ahead:
+            self.direction *= -1
+
+        else:
+            self.rect.x += move_x
+
+    def draw(self, surface, camera):
+
+        # plagboss.png faces LEFT by default.
+        # Therefore flip it when moving RIGHT.
+        img = pygame.transform.flip(
+            self.image,
+            self.direction > 0,
+            False
+        )
+
+        boss_rect = self.rect.copy()
+
+        # Move ONLY the displayed image down.
+        # Collision/feet position stays unchanged.
+        boss_rect.y += 20
+
+        surface.blit(
+            img,
+            camera.apply(boss_rect)
+        )
+
+    def take_damage(self, amount):
+
+        if not self.alive:
+            return False
+
+        self.health -= amount
+
+        if self.health <= 0:
+            self.health = 0
+            self.alive = False
+            return True
+
+        return False
+
+    def apply_knockback(self, direction):
+
+        self.knockback_vel_x = (
+            ENEMY_KNOCKBACK_SPEED * direction*0.7
+        )
+
+        self.knockback_timer = (
+            ENEMY_KNOCKBACK_DURATION*0.7
+        )
 class Ghoul:
-    DETECTION_RANGE = 500
+    DETECTION_RANGE = 700
     SPEED = 5
     SOUND_COOLDOWN = 3.0
 
@@ -1111,27 +1258,12 @@ def main():
         attack2 = []
 
         for i in range(1, 5):
-            attack2.append(
-
-                pygame.image.load(
-                    asset(f"assets/pragassets/praga_attackr_{i}.png")
-                ).convert_alpha()
-
-            )
-            ghoul_image = pygame.image.load(
-                asset("assets/pragassets/ghoul.png")
-            ).convert_alpha()
-            tonic_image = pygame.image.load(
-                asset("assets/pragassets/toniic.png")
-            ).convert_alpha()
-            wolf_image = pygame.image.load(
-                asset("assets/pragassets/doggohurt.png")
-            ).convert_alpha()
-
-            # Size of the resting wolf/player sprite
-            rest_image = pygame.image.load(
-                asset("assets/pragassets/dogorest.png")
-            ).convert_alpha()
+            attack2.append(pygame.image.load(asset(f"assets/pragassets/praga_attackr_{i}.png")).convert_alpha())
+            ghoul_image = pygame.image.load(asset("assets/pragassets/ghoul.png")).convert_alpha()
+            tonic_image = pygame.image.load(asset("assets/pragassets/toniic.png")).convert_alpha()
+            wolf_image = pygame.image.load(asset("assets/pragassets/doggohurt.png")).convert_alpha()
+            boss_image = pygame.image.load(asset("assets/pragassets/plagboss.png")).convert_alpha()
+            rest_image = pygame.image.load(asset("assets/pragassets/dogorest.png")).convert_alpha()
 
     except FileNotFoundError as e:
 
@@ -1150,11 +1282,17 @@ def main():
 
     wall_rects = build_wall_rects()
 
-    normal_spawns, ghoul_spawns, tonic_spawns, wolf_spawns = build_enemy_spawns()
+    normal_spawns, ghoul_spawns, tonic_spawns, wolf_spawns,boss_spawns = build_enemy_spawns()
 
     enemies = [
         Enemy(x, y, idle)
         for x, y in normal_spawns
+    ]
+
+    # Add bosses to the same enemy list
+    enemies += [
+        Boss(x, y, boss_image)
+        for x, y in boss_spawns
     ]
 
     ghouls = [
@@ -1202,6 +1340,7 @@ def main():
     drops = []
     xp_to_next_level = COIN_DROP_MAX * 5 - 2
     game_paused_for_levelup = False
+    game_won = False
 
     while True:
         for event in pygame.event.get():
@@ -1341,9 +1480,17 @@ def main():
                     player.image = rest_image
                     player.current_slash = None
                     player.attacking = False
-                if event.key == pygame.K_r and player.is_dead:
+                if event.key == pygame.K_r and (player.is_dead or game_won):
                     # ---------- Rebuild enemies / ghouls / tonics from original spawn points ----------
-                    enemies = [Enemy(x, y, idle) for x, y in normal_spawns]
+                    enemies = [
+                        Enemy(x, y, idle)
+                        for x, y in normal_spawns
+                    ]
+
+                    enemies += [
+                        Boss(x, y, boss_image)
+                        for x, y in boss_spawns
+                    ]
                     ghouls = [Ghoul(x, y, ghoul_image) for x, y in ghoul_spawns]
                     tonics = [Tonic(x, y, tonic_image) for x, y in tonic_spawns]
 
@@ -1365,8 +1512,14 @@ def main():
                     # ---------- Reset any HUD messages ----------
                     tonic_message = ""
                     tonic_message_timer = 0
+                    game_won = False
+                    resting = False
+                    has_rested_once = False
+                    player.image = player.idle
 
         if game_paused_for_levelup:
+            continue
+        if game_won:
             continue
 
         if not game_paused_for_levelup and not resting:
@@ -1378,15 +1531,19 @@ def main():
 
             if hitbox:
                 for enemy in enemies:
+
                     if (
                         enemy.alive
                         and id(enemy) not in player.hit_this_swing
                         and hitbox.colliderect(enemy.rect)
                     ):
+
                         player.hit_this_swing.add(id(enemy))
 
+                        # Deal damage
                         died = enemy.take_damage(ATTACK_DAMAGE)
 
+                        # Knockback
                         direction = (
                             1
                             if enemy.rect.centerx >= player.rect.centerx
@@ -1395,7 +1552,22 @@ def main():
 
                         enemy.apply_knockback(direction)
 
-                        if died:
+                        # -----------------------------------------
+                        # BOSS HIT
+                        # -----------------------------------------
+                        if getattr(enemy, "is_boss", False):
+
+                            
+
+                            # Boss defeated
+                            if died:
+                                game_won = True
+
+                        # -----------------------------------------
+                        # NORMAL ENEMY DEFEATED
+                        # -----------------------------------------
+                        elif died:
+
                             drops.append(
                                 Drop(
                                     enemy.rect.centerx,
@@ -1407,7 +1579,6 @@ def main():
                                     coin_image
                                 )
                             )
-
                 for ghoul in ghouls:
                     if (
                         ghoul.alive
@@ -1441,8 +1612,38 @@ def main():
             ghouls = [g for g in ghouls if g.alive]
 
             # ---------- Update enemies ----------
+            # ---------- Update enemies ----------
             for enemy in enemies:
                 enemy.update(wall_rects)
+
+                if getattr(enemy, "is_boss", False):
+
+                    if enemy.health <= enemy.max_health * 0.5:
+
+                        enemy.ghoul_spawn_timer -= 1 / FPS
+
+                        if enemy.ghoul_spawn_timer <= 0:
+
+                            ghoul_x = (
+                                enemy.rect.centerx
+                                + random.randint(-80, 80)
+                            )
+
+                            ghoul_y = (
+                                enemy.rect.top
+                                - random.randint(50, 100)
+                            )
+
+                            ghouls.append(
+                                Ghoul(
+                                    ghoul_x,
+                                    ghoul_y,
+                                    ghoul_image
+                                )
+                            )
+
+                            # Next ghoul in 3–7 seconds
+                            enemy.ghoul_spawn_timer = random.uniform(3, 7)
 
             for ghoul in ghouls:
                 ghoul.update(player)
@@ -1520,6 +1721,42 @@ def main():
 
         for enemy in enemies:
             enemy.draw(canvas, camera)
+
+            # ---------- BOSS ENRAGED INDICATOR ----------
+            if (
+                getattr(enemy, "is_boss", False)
+                and enemy.health <= enemy.max_health * 0.5
+            ):
+
+                enraged_font = pygame.font.SysFont(
+                    "monospace",
+                    28,
+                    bold=True
+                )
+
+                enraged_text = enraged_font.render(
+                    "ENRAGED!",
+                    True,
+                    (255, 60, 60)
+                )
+
+                # Position the text above the boss
+                world_pos = pygame.Rect(
+                    enemy.rect.centerx - enraged_text.get_width() // 2,
+                    enemy.rect.top - 40,
+                    enraged_text.get_width(),
+                    enraged_text.get_height()
+                )
+
+                screen_rect = camera.apply(world_pos)
+
+                canvas.blit(
+                    enraged_text,
+                    screen_rect
+                )
+
+        for ghoul in ghouls:
+            ghoul.draw(canvas, camera)
 
         for ghoul in ghouls:
             ghoul.draw(canvas, camera)
@@ -1653,7 +1890,65 @@ def main():
             canvas.blit(opt1, opt1.get_rect(center=(NATIVE_W // 2, NATIVE_H // 2)))
             canvas.blit(opt2, opt2.get_rect(center=(NATIVE_W // 2, NATIVE_H // 2 + 50)))
 
-        # ---------- Game Over ----------
+        
+        # ---------- YOU WON ----------
+        if game_won:
+
+            overlay = pygame.Surface(
+                (NATIVE_W, NATIVE_H),
+                pygame.SRCALPHA
+            )
+
+            overlay.fill((0, 0, 0, 190))
+            canvas.blit(overlay, (0, 0))
+
+            win_font = pygame.font.SysFont(
+                "monospace",
+                120,
+                bold=True
+            )
+
+            win_text = win_font.render(
+                "U WON",
+                True,
+                (255, 215, 0)
+            )
+
+            win_rect = win_text.get_rect(
+                center=(
+                    NATIVE_W // 2,
+                    NATIVE_H // 2 - 60
+                )
+            )
+
+            canvas.blit(
+                win_text,
+                win_rect
+            )
+
+            win_sub_font = pygame.font.SysFont(
+                "monospace",
+                32
+            )
+
+            win_sub = win_sub_font.render(
+                "Press R to reset or ESC to quit",
+                True,
+                (255, 255, 255)
+            )
+
+            win_sub_rect = win_sub.get_rect(
+                center=(
+                    NATIVE_W // 2,
+                    NATIVE_H // 2 + 70
+                )
+            )
+
+            canvas.blit(
+                win_sub,
+                win_sub_rect
+            )
+            #game over
         if player.is_dead:
             game_over_font = pygame.font.SysFont("monospace", 80, bold=True)
             text = game_over_font.render("GAME OVER", True, (220, 30, 30))
