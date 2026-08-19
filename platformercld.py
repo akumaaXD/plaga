@@ -9,7 +9,7 @@ import hashlib
 try:
     import mysql.connector
 except ImportError:
-    mysql = None  # handled gracefully in _db_connect()
+    mysql = None  
 
 # ── Constants ────────────────────────────────────────────────────────────────
 NATIVE_W, NATIVE_H = 1920, 1080  # internal render resolution (matches bg art)
@@ -19,7 +19,7 @@ GRAVITY = 0.7
 JUMP_FORCE = -22
 MOVE_SPEED = 9
 CAMERA_LERP = 0.08  # lower = more lag bwteen input and camera movement
-
+ATTACK_COOLDOWN = 0.06
 # Colours these are placeholders
 SKY_COLOR = (30, 30, 46)
 WALL_COLOR = (80, 80, 110)
@@ -30,7 +30,7 @@ WALL_EDGE_COLOR = (110, 110, 150)
 DAMAGE_MULTIPLIER = 1
 BASE_ATTACK_DAMAGE = 10
 ATTACK_DAMAGE = BASE_ATTACK_DAMAGE * DAMAGE_MULTIPLIER
-ATTACK_RANGE = 110  # reach of the sword hitbox, in px
+ATTACK_RANGE = 100  # reach of the sword hitbox, in px
 ATTACK_HITBOX_HEIGHT = 100
 ACTIVE_ATTACK_FRAMES = (1, 2)  # which attack frames actually deal damage
 
@@ -132,10 +132,10 @@ def load_sounds():
 # Add/remove columns but every row must stay the same length.
 GRID = [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1.1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
     [1,1,1,1,1,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,1],
-    [1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,1,1],
+    [1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,2,0,0,0,5,0,0,2,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,1],
+    [1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,1,1],
     [1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,3,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
     [1,1,0,0,0,0,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
     [1,1,0,8,0,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,0,0,0,1,0,0,2,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,1,1,1,1,1,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
@@ -152,8 +152,8 @@ GRID = [
     [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,2,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,0,0,0,2,0,0,0,2,0,0,0,0,1,1,0,0,3,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
     [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,1,1,1,1,0,0,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
     [1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
-    [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
-    [1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,2,1,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,0,0,2,0,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,3,0,2,0,0,3,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0,1,1],
+    [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+    [1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,2,0,0,0,0,0,0,0,2,1,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,0,0,2,0,0,0,0,2,0,0,0,1,1,0,0,0,0,2,0,0,0,3,0,2,0,0,3,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0,1,1],
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ]
 
@@ -223,16 +223,13 @@ def build_wall_rects():
             )
 
             surface = (
-                    r == 0 or
-                    GRID[r - 1][c] == 0
+                r == 0
+                or GRID[r - 1][c] in (0, 2, 3, 5,8,9)
             )
 
             if surface:
-
                 tile_map[(r, c)] = random.choice(grass_tiles)
-
             else:
-
                 tile_map[(r, c)] = random.choice(stone_tiles)
 
     return rects
@@ -302,6 +299,7 @@ class Camera:
 class Player:
     WALK_FRAME_TIME = 0.08
     ATTACK_FRAME_TIME = 0.045
+    
 
     SPRITE_SCALE = 1
 
@@ -347,6 +345,7 @@ class Player:
 
         self.attack_frame = 0
         self.attack_timer = 0
+        self.attack_cooldown_timer = 0
 
         self.attacking = False
 
@@ -384,6 +383,9 @@ class Player:
         if self.attacking:
             return
 
+        if self.attack_cooldown_timer > 0:
+            return
+
         self.attacking = True
         sword_sound.play()
 
@@ -392,8 +394,7 @@ class Player:
 
         self.attack_combo = 1 - self.attack_combo
 
-        self.hit_this_swing = set()  # set of IDs of enemies who were hit by this swing
-
+        self.hit_this_swing = set()
     def get_attack_hitbox(self):
         if not self.attacking or self.attack_frame not in ACTIVE_ATTACK_FRAMES:
             return None
@@ -517,10 +518,10 @@ class Player:
 
                 self.attack_frame += 1
 
-                if self.attack_frame >= 4:
+                if self.attack_frame >= 3:
                     self.attacking = False
-
                     self.attack_frame = 0
+                    self.attack_cooldown_timer = ATTACK_COOLDOWN
 
             # ---------- Slash Animation ----------
 
@@ -528,7 +529,7 @@ class Player:
                 attack_frames = self.attack_left  # left-hand slash
             else:
                 attack_frames = self.attack_right  # right-hand slash
-            SLASH_SCALE = 1.6  # Increase this to make it bigger
+            SLASH_SCALE = 1.7  # Increase this to make it bigger
 
             slash = attack_frames[self.attack_frame]
 
@@ -577,11 +578,19 @@ class Player:
     def update(self, walls):
 
         dt = 1 / FPS
+
+        # ---------- Attack cooldown ----------
+        if self.attack_cooldown_timer > 0:
+            self.attack_cooldown_timer -= dt
+
+            if self.attack_cooldown_timer < 0:
+                self.attack_cooldown_timer = 0
+
         if not self.is_dead:
 
             if self.knockback_timer > 0:
                 self.knockback_timer -= dt
-                self.vel_x *= KNOCKBACK_FRICTION  # NEW — bleed off horizontal speed
+                self.vel_x *= KNOCKBACK_FRICTION
 
             self.handle_input()
 
@@ -590,6 +599,7 @@ class Player:
             self.move_and_collide(walls)
 
             self.animate()
+
         self.update_timers(dt)
 
     def draw(self, surface, camera):
@@ -733,48 +743,59 @@ class Enemy:
 
 BOSS_SPEED = 8
 BOSS_SCALE = 3
-BOSS_MAX_HEALTH = ENEMY_MAX_HEALTH * 10
+BOSS_MAX_HEALTH = ENEMY_MAX_HEALTH * 15
 
 
 class Boss:
 
     def __init__(self, x, y, image, spawn_id=None):
 
-        self.spawn_id = spawn_id  # index into boss_spawns, used for save/load
+        self.spawn_id = spawn_id
 
-        # Make boss 2x the normal enemy size
-        w = int((TILE_SIZE - 10) * BOSS_SCALE)
-        h = int((TILE_SIZE - 6) * BOSS_SCALE)
-
-        # Keep the boss standing on the same platform
-        self.rect = pygame.Rect(
-            x,
-            y + (TILE_SIZE - h),
-            w,
-            h
-        )
-
-        self.speed = BOSS_SPEED
-        self.direction = 1
+        # -----------------------------------------
+        # VISIBLE BOSS IMAGE SIZE
+        # -----------------------------------------
+        image_w = int((TILE_SIZE - 10) * BOSS_SCALE)
+        image_h = int((TILE_SIZE - 20) * BOSS_SCALE)
 
         self.image = pygame.transform.scale(
             image,
-            (w, h)
+            (image_w, image_h)
         )
+
+        # -----------------------------------------
+        # INVISIBLE COLLISION HITBOX
+        # Shorter than the visible image
+        # -----------------------------------------
+        hitbox_w = image_w
+        hitbox_h = int(image_h * 0.65)
+
+        self.rect = pygame.Rect(
+            x,
+            y + (TILE_SIZE - hitbox_h),
+            hitbox_w,
+            hitbox_h
+        )
+
+        # -----------------------------------------
+        # Keep the visible image at the SAME level
+        # -----------------------------------------
+        self.image_offset_y = image_h - hitbox_h
+
+        self.speed = BOSS_SPEED
+        self.direction = 1
 
         # Health
         self.max_health = BOSS_MAX_HEALTH
         self.health = self.max_health
         self.alive = True
 
-        # Used by the same knockback system as normal enemies
+        # Knockback
         self.knockback_timer = 0.0
         self.knockback_vel_x = 0.0
 
-        # Lets the attack code know this is the boss
         self.is_boss = True
-        self.ghoul_spawn_timer = random.uniform(1, 4)
-
+        self.ghoul_spawn_timer = random.uniform(3, 8)
     def update(self, walls):
 
         dt = 1 / FPS
@@ -834,8 +855,6 @@ class Boss:
 
     def draw(self, surface, camera):
 
-        # plagboss.png faces LEFT by default.
-        # Therefore flip it when moving RIGHT.
         img = pygame.transform.flip(
             self.image,
             self.direction > 0,
@@ -844,15 +863,15 @@ class Boss:
 
         boss_rect = self.rect.copy()
 
-        # Move ONLY the displayed image down.
-        # Collision/feet position stays unchanged.
-        boss_rect.y += 20
+        boss_rect.y -= self.image_offset_y
+
+        # YOUR ORIGINAL OFFSET
+        boss_rect.y += 15
 
         surface.blit(
             img,
             camera.apply(boss_rect)
         )
-
     def take_damage(self, amount):
 
         if not self.alive:
@@ -1717,7 +1736,7 @@ def main():
 
         attack1 = []
 
-        for i in range(1, 5):
+        for i in range(1, 4):
             attack1.append(
 
                 pygame.image.load(
@@ -1728,7 +1747,7 @@ def main():
 
         attack2 = []
 
-        for i in range(1, 5):
+        for i in range(1, 4):
             attack2.append(pygame.image.load(asset(f"assets/pragassets/praga_attackr_{i}.png")).convert_alpha())
             ghoul_image = pygame.image.load(asset("assets/pragassets/ghoul.png")).convert_alpha()
             tonic_image = pygame.image.load(asset("assets/pragassets/toniic.png")).convert_alpha()
