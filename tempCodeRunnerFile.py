@@ -1,1 +1,1 @@
-self.is_bos
+idle

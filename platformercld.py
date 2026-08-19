@@ -1224,13 +1224,17 @@ def main():
     load_bg_images()
     load_sounds()
     try:
-
+        
+        
         idle = pygame.image.load(
             asset("assets/pragassets/plaga_standing.png")
         ).convert_alpha()
+        enemy_img = pygame.image.load(
+                asset("assets/pragassets/enemy.png")
+        ).convert_alpha()
 
         coin_image = pygame.image.load(
-            asset("assets/pragassets/drop.jpg")
+            asset("assets/pragassets/coin.png")
         ).convert_alpha()
 
         walk_frames = []
@@ -1285,7 +1289,7 @@ def main():
     normal_spawns, ghoul_spawns, tonic_spawns, wolf_spawns,boss_spawns = build_enemy_spawns()
 
     enemies = [
-        Enemy(x, y, idle)
+        Enemy(x, y, enemy_img)
         for x, y in normal_spawns
     ]
 
