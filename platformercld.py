@@ -3,6 +3,13 @@ import sys
 import os
 import random
 import math
+import json
+import hashlib
+
+try:
+    import mysql.connector
+except ImportError:
+    mysql = None  # handled gracefully in _db_connect()
 
 # ── Constants ────────────────────────────────────────────────────────────────
 NATIVE_W, NATIVE_H = 1920, 1080  # internal render resolution (matches bg art)
@@ -56,6 +63,17 @@ GHOUL_KNOCKBACK_SPEED = 16
 GHOUL_KNOCKBACK_DURATION = 0.15
 
 KNOCKBACK_FRICTION = 0.85   # how fast knockback velocity decays each frame
+
+# ── MySQL connection settings ─────────────────────────────────────────────────
+# Fill these in for your own MySQL server. The database itself and its tables
+# are created automatically the first time the game runs (see init_db()).
+DB_CONFIG = {
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "root",          # <-- put your MySQL password here
+    "database": "plaga_game",
+}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -642,7 +660,7 @@ class Player:
 
 # Enemy
 class Enemy:
-    def __init__(self, x, y, image, speed=2):
+    def __init__(self, x, y, image, speed=2, spawn_id=None):
         w, h = TILE_SIZE - 10, TILE_SIZE - 6
         # y passed in is the TOP of the spawn tile; snap rect bottom to the
         # bottom of that tile (= top of the platform tile below it)
@@ -650,6 +668,7 @@ class Enemy:
         self.speed = speed
         self.direction = 1  # 1 = right, -1 = left
         self.image = pygame.transform.scale(image, (w, h))
+        self.spawn_id = spawn_id  # index into normal_spawns, used for save/load
 
         # health mechanics
         self.max_health = ENEMY_MAX_HEALTH
@@ -719,7 +738,9 @@ BOSS_MAX_HEALTH = ENEMY_MAX_HEALTH * 10
 
 class Boss:
 
-    def __init__(self, x, y, image):
+    def __init__(self, x, y, image, spawn_id=None):
+
+        self.spawn_id = spawn_id  # index into boss_spawns, used for save/load
 
         # Make boss 2x the normal enemy size
         w = int((TILE_SIZE - 10) * BOSS_SCALE)
@@ -860,7 +881,7 @@ class Ghoul:
     SPEED = 5
     SOUND_COOLDOWN = 3.0
 
-    def __init__(self, x, y, image):
+    def __init__(self, x, y, image, spawn_id=None):
 
         w = TILE_SIZE + 100
         h = TILE_SIZE + 100
@@ -871,6 +892,10 @@ class Ghoul:
             w,
             h
         )
+
+        # index into ghoul_spawns; ghouls spawned mid-fight by the boss
+        # keep this as None so they're just skipped when saving/loading
+        self.spawn_id = spawn_id
 
         self.sound_timer = 0
 
@@ -969,7 +994,7 @@ class HurtWolf:
 class Tonic:
     PICKUP_RANGE = 80
 
-    def __init__(self, x, y, image):
+    def __init__(self, x, y, image, spawn_id=None):
 
         self.rect = pygame.Rect(
             x,
@@ -983,6 +1008,7 @@ class Tonic:
             (int(1 * TILE_SIZE), int(1 * TILE_SIZE))
         )
 
+        self.spawn_id = spawn_id  # index into tonic_spawns, used for save/load
         self.collected = False
         self.used=False
 
@@ -1197,6 +1223,433 @@ def enemies_near_player(player, enemies, ghouls, radius=1000):
             return True
 
     return False
+
+
+# ── Accounts & save/load (MySQL) ───────────────────────────────────────────────
+
+def _db_connect(with_database=True):
+    if mysql is None:
+        raise RuntimeError(
+            "mysql-connector-python is not installed. "
+            "Run: pip install mysql-connector-python"
+        )
+
+    config = dict(DB_CONFIG)
+
+    if not with_database:
+        config.pop("database", None)
+
+    return mysql.connector.connect(**config)
+
+
+def init_db():
+    """Create the database/tables the first time the game is run. Safe to call every launch."""
+
+    conn = _db_connect(with_database=False)
+    cur = conn.cursor()
+
+    cur.execute(
+        f"CREATE DATABASE IF NOT EXISTS `{DB_CONFIG['database']}`"
+    )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    conn = _db_connect(with_database=True)
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            salt VARCHAR(64) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # One save slot per account. state_json holds everything needed to
+    # put the player back exactly where they rested.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS saves (
+            user_id INT PRIMARY KEY,
+            state_json LONGTEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def hash_password(password, salt_hex=None):
+    """PBKDF2-SHA256 password hashing. Returns (hash_hex, salt_hex)."""
+
+    if salt_hex is None:
+        salt_hex = os.urandom(16).hex()
+
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        bytes.fromhex(salt_hex),
+        100_000
+    ).hex()
+
+    return digest, salt_hex
+
+
+def create_user(username, password):
+    """Registers a new account. Returns the new user_id, or None if the name is taken."""
+
+    conn = _db_connect()
+    cur = conn.cursor()
+
+    try:
+        password_hash, salt = hash_password(password)
+
+        cur.execute(
+            "INSERT INTO users (username, password_hash, salt) VALUES (%s, %s, %s)",
+            (username, password_hash, salt)
+        )
+
+        conn.commit()
+        return cur.lastrowid
+
+    except mysql.connector.IntegrityError:
+        return None  # username already exists
+
+    finally:
+        cur.close()
+        conn.close()
+
+
+def authenticate_user(username, password):
+    """Returns the user_id if the credentials are correct, otherwise None."""
+
+    conn = _db_connect()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT id, password_hash, salt FROM users WHERE username = %s",
+        (username,)
+    )
+
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row is None:
+        return None
+
+    user_id, stored_hash, salt = row
+    check_hash, _ = hash_password(password, salt)
+
+    if check_hash == stored_hash:
+        return user_id
+
+    return None
+
+
+def save_game_state(user_id, state):
+    """Upserts the player's save slot with the current run state (called whenever they rest)."""
+
+    conn = _db_connect()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        INSERT INTO saves (user_id, state_json) VALUES (%s, %s)
+        ON DUPLICATE KEY UPDATE state_json = VALUES(state_json)
+        """,
+        (user_id, json.dumps(state))
+    )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def load_game_state(user_id):
+    """Returns the saved state dict for this account, or None if they've never rested yet."""
+
+    conn = _db_connect()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT state_json FROM saves WHERE user_id = %s",
+        (user_id,)
+    )
+
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row is None:
+        return None
+
+    return json.loads(row[0])
+
+
+def build_save_state(player, enemies, ghouls, tonics, coins,
+                      xp_to_next_level, has_rested_once, game_won,
+                      normal_spawns, boss_spawns, ghoul_spawns):
+    """Packs everything needed to resume the run into a JSON-able dict."""
+
+    alive_normal_ids = {
+        e.spawn_id for e in enemies
+        if not getattr(e, "is_boss", False)
+    }
+    defeated_normal_ids = [
+        i for i in range(len(normal_spawns))
+        if i not in alive_normal_ids
+    ]
+
+    boss = next((e for e in enemies if getattr(e, "is_boss", False)), None)
+    boss_defeated = boss is None and len(boss_spawns) > 0
+    boss_health = boss.health if boss else None
+
+    alive_ghoul_ids = {
+        g.spawn_id for g in ghouls
+        if getattr(g, "spawn_id", None) is not None
+    }
+    defeated_ghoul_ids = [
+        i for i in range(len(ghoul_spawns))
+        if i not in alive_ghoul_ids
+    ]
+
+    return {
+        "pos_x": player.rect.x,
+        "pos_y": player.rect.y,
+        "facing": player.facing,
+        "health": player.health,
+        "max_health": player.max_health,
+        "coins": coins,
+        "player_level": PLAYER_LEVEL,
+        "health_multiplier": HEALTH_MULTIPLIER,
+        "damage_multiplier": DAMAGE_MULTIPLIER,
+        "xp_to_next_level": xp_to_next_level,
+        "has_rested_once": has_rested_once,
+        "defeated_normal_ids": defeated_normal_ids,
+        "boss_defeated": boss_defeated,
+        "boss_health": boss_health,
+        "defeated_ghoul_ids": defeated_ghoul_ids,
+        "tonic_collected_ids": [t.spawn_id for t in tonics if t.collected],
+        "tonic_used_ids": [t.spawn_id for t in tonics if t.used],
+        "game_won": game_won,
+    }
+
+
+def apply_save_state(state, player, enemies, ghouls, tonics, wolves):
+    """Restores a run from a previously saved state dict. Returns
+    (coins, xp_to_next_level, has_rested_once, game_won)."""
+
+    global PLAYER_LEVEL, HEALTH_MULTIPLIER, DAMAGE_MULTIPLIER, ATTACK_DAMAGE
+
+    player.rect.x = state["pos_x"]
+    player.rect.y = state["pos_y"]
+    player.facing = state.get("facing", player.facing)
+    player.flip = player.facing == "left"
+    player.max_health = state["max_health"]
+    player.health = state["health"]
+
+    PLAYER_LEVEL = state["player_level"]
+    HEALTH_MULTIPLIER = state["health_multiplier"]
+    DAMAGE_MULTIPLIER = state["damage_multiplier"]
+    ATTACK_DAMAGE = BASE_ATTACK_DAMAGE * DAMAGE_MULTIPLIER
+
+    defeated_normal_ids = set(state.get("defeated_normal_ids", []))
+    enemies[:] = [
+        e for e in enemies
+        if getattr(e, "is_boss", False) or e.spawn_id not in defeated_normal_ids
+    ]
+
+    if state.get("boss_defeated"):
+        enemies[:] = [e for e in enemies if not getattr(e, "is_boss", False)]
+    elif state.get("boss_health") is not None:
+        for e in enemies:
+            if getattr(e, "is_boss", False):
+                e.health = state["boss_health"]
+
+    defeated_ghoul_ids = set(state.get("defeated_ghoul_ids", []))
+    ghouls[:] = [
+        g for g in ghouls
+        if getattr(g, "spawn_id", None) is None or g.spawn_id not in defeated_ghoul_ids
+    ]
+
+    collected_ids = set(state.get("tonic_collected_ids", []))
+    used_ids = set(state.get("tonic_used_ids", []))
+
+    for t in tonics:
+        if t.spawn_id in used_ids:
+            t.used = True
+            t.collected = False
+        elif t.spawn_id in collected_ids:
+            t.collected = True
+
+    if state.get("has_rested_once"):
+        wolves.clear()
+
+    return (
+        state["coins"],
+        state["xp_to_next_level"],
+        state.get("has_rested_once", False),
+        state.get("game_won", False),
+    )
+
+
+def show_login_page(screen, canvas, MONITOR_W, MONITOR_H):
+    """Simple username/password screen with a Login/Sign Up toggle. Blocks until the
+    player is authenticated, then returns (user_id, username)."""
+
+    title_font = pygame.font.SysFont("monospace", 64, bold=True)
+    label_font = pygame.font.SysFont("monospace", 28)
+    input_font = pygame.font.SysFont("monospace", 30)
+    small_font = pygame.font.SysFont("monospace", 22)
+
+    mode = "login"  # or "signup"
+    username_text = ""
+    password_text = ""
+    active_field = "username"
+    error_message = ""
+
+    clock = pygame.time.Clock()
+
+    while True:
+        for event in pygame.event.get():
+
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.KEYDOWN:
+
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
+
+                if event.key == pygame.K_TAB:
+                    active_field = "password" if active_field == "username" else "username"
+                    continue
+
+                if event.key == pygame.K_s and (event.mod & pygame.KMOD_CTRL):
+                    mode = "signup" if mode == "login" else "login"
+                    error_message = ""
+                    continue
+
+                if event.key == pygame.K_BACKSPACE:
+                    if active_field == "username":
+                        username_text = username_text[:-1]
+                    else:
+                        password_text = password_text[:-1]
+                    continue
+
+                if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+
+                    clean_user = username_text.strip()
+
+                    if not clean_user or not password_text:
+                        error_message = "Enter both a username and password"
+                        continue
+
+                    try:
+                        if mode == "login":
+                            user_id = authenticate_user(clean_user, password_text)
+
+                            if user_id is None:
+                                error_message = "Wrong username or password"
+                            else:
+                                return user_id, clean_user
+
+                        else:
+                            user_id = create_user(clean_user, password_text)
+
+                            if user_id is None:
+                                error_message = "That username is already taken"
+                            else:
+                                return user_id, clean_user
+
+                    except Exception as e:
+                        error_message = f"Database error: {e}"
+
+                    continue
+
+                # Regular typing
+                if active_field == "username":
+                    if len(username_text) < 24 and event.unicode.isprintable():
+                        username_text += event.unicode
+                else:
+                    if len(password_text) < 32 and event.unicode.isprintable():
+                        password_text += event.unicode
+
+        # ---------------- Draw ----------------
+        canvas.fill((18, 18, 28))
+
+        title = title_font.render("PLAGA", True, (230, 200, 60))
+        canvas.blit(title, title.get_rect(center=(NATIVE_W // 2, 160)))
+
+        mode_text = label_font.render(
+            "SIGN UP" if mode == "signup" else "LOG IN",
+            True, (200, 200, 220)
+        )
+        canvas.blit(mode_text, mode_text.get_rect(center=(NATIVE_W // 2, 240)))
+
+        box_w, box_h = 520, 56
+        box_x = NATIVE_W // 2 - box_w // 2
+
+        # Username box
+        user_box_y = 340
+        user_active = active_field == "username"
+        pygame.draw.rect(canvas, (40, 40, 60), (box_x, user_box_y, box_w, box_h), border_radius=8)
+        pygame.draw.rect(
+            canvas,
+            (230, 200, 60) if user_active else (90, 90, 120),
+            (box_x, user_box_y, box_w, box_h), 3, border_radius=8
+        )
+        canvas.blit(small_font.render("Username", True, (160, 160, 180)), (box_x, user_box_y - 28))
+        canvas.blit(input_font.render(username_text, True, (240, 240, 240)), (box_x + 14, user_box_y + 13))
+
+        # Password box
+        pass_box_y = 430
+        pass_active = active_field == "password"
+        pygame.draw.rect(canvas, (40, 40, 60), (box_x, pass_box_y, box_w, box_h), border_radius=8)
+        pygame.draw.rect(
+            canvas,
+            (230, 200, 60) if pass_active else (90, 90, 120),
+            (box_x, pass_box_y, box_w, box_h), 3, border_radius=8
+        )
+        canvas.blit(small_font.render("Password", True, (160, 160, 180)), (box_x, pass_box_y - 28))
+        canvas.blit(
+            input_font.render("*" * len(password_text), True, (240, 240, 240)),
+            (box_x + 14, pass_box_y + 13)
+        )
+
+        if error_message:
+            err_surf = small_font.render(error_message, True, (230, 80, 80))
+            canvas.blit(err_surf, err_surf.get_rect(center=(NATIVE_W // 2, 520)))
+
+        info_surf = small_font.render(
+            "TAB to switch fields   ENTER to submit",
+            True, (140, 140, 160)
+        )
+        canvas.blit(info_surf, info_surf.get_rect(center=(NATIVE_W // 2, 580)))
+
+        toggle_hint = small_font.render(
+            "Don't have an account? Ctrl+S to Sign Up"
+            if mode == "login" else
+            "Already have an account? Ctrl+S to Log In",
+            True, (140, 140, 160)
+        )
+        canvas.blit(toggle_hint, toggle_hint.get_rect(center=(NATIVE_W // 2, 610)))
+
+        scaled = pygame.transform.scale(canvas, (MONITOR_W, MONITOR_H))
+        screen.blit(scaled, (0, 0))
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     pygame.init()
@@ -1217,6 +1670,20 @@ def main():
         MONITOR_W,
         MONITOR_H
     )
+
+    # ---------------- Account / save system ----------------
+    db_available = True
+
+    try:
+        init_db()
+    except Exception as e:
+        print(f"Warning: could not reach MySQL ({e}). Playing without login/save.")
+        db_available = False
+
+    if db_available:
+        user_id, username = show_login_page(screen, canvas, MONITOR_W, MONITOR_H)
+    else:
+        user_id, username = None, "Guest"
 
     clock = pygame.time.Clock()
 
@@ -1289,23 +1756,23 @@ def main():
     normal_spawns, ghoul_spawns, tonic_spawns, wolf_spawns,boss_spawns = build_enemy_spawns()
 
     enemies = [
-        Enemy(x, y, enemy_img)
-        for x, y in normal_spawns
+        Enemy(x, y, enemy_img, spawn_id=i)
+        for i, (x, y) in enumerate(normal_spawns)
     ]
 
     # Add bosses to the same enemy list
     enemies += [
-        Boss(x, y, boss_image)
-        for x, y in boss_spawns
+        Boss(x, y, boss_image, spawn_id=i)
+        for i, (x, y) in enumerate(boss_spawns)
     ]
 
     ghouls = [
-        Ghoul(x, y, ghoul_image)
-        for x, y in ghoul_spawns
+        Ghoul(x, y, ghoul_image, spawn_id=i)
+        for i, (x, y) in enumerate(ghoul_spawns)
     ]
     tonics = [
-        Tonic(x, y, tonic_image)
-        for x, y in tonic_spawns
+        Tonic(x, y, tonic_image, spawn_id=i)
+        for i, (x, y) in enumerate(tonic_spawns)
     ]
     wolves = [
         HurtWolf(x, y, wolf_image)
@@ -1335,16 +1802,60 @@ def main():
     tonic_message = ""
     tonic_message_timer = 0
     resting = False
-    has_rested_once = False
-    
-
 
     # enemy drops
-    coins = 0
     drops = []
-    xp_to_next_level = COIN_DROP_MAX * 5 - 2
     game_paused_for_levelup = False
+
+    # ---------------- Load saved progress, if any ----------------
+    coins = 0
+    xp_to_next_level = COIN_DROP_MAX * 5 - 2
+    has_rested_once = False
     game_won = False
+
+    # Tracks the last spot the player rested at (or the DB save that was
+    # loaded at startup, if any), so dying and pressing R sends the player
+    # back there instead of the very start of the level.
+    last_checkpoint = None
+
+    if db_available and user_id is not None:
+        try:
+            saved_state = load_game_state(user_id)
+        except Exception as e:
+            print(f"Warning: could not load save ({e})")
+            saved_state = None
+
+        if saved_state:
+            coins, xp_to_next_level, has_rested_once, game_won = apply_save_state(
+                saved_state, player, enemies, ghouls, tonics, wolves
+            )
+            camera.x = player.rect.centerx - NATIVE_W / 2
+            camera.y = player.rect.centery - NATIVE_H / 2
+            last_checkpoint = saved_state
+
+    def save_progress():
+        """Snapshots the current run as the checkpoint to respawn at on death,
+        and (if an account is logged in) writes it to the MySQL save slot too.
+        Called whenever the player rests, AND whenever the boss is defeated —
+        that way quitting right after a win doesn't roll the save back to the
+        last time they rested."""
+
+        nonlocal last_checkpoint
+
+        state = build_save_state(
+            player, enemies, ghouls, tonics, coins,
+            xp_to_next_level, has_rested_once, game_won,
+            normal_spawns, boss_spawns, ghoul_spawns
+        )
+        last_checkpoint = state
+
+        if not (db_available and user_id is not None):
+            return
+
+        try:
+            save_game_state(user_id, state)
+        except Exception as e:
+            print(f"Warning: could not save progress ({e})")
 
     while True:
         for event in pygame.event.get():
@@ -1473,6 +1984,8 @@ def main():
                         player.current_slash = None
                         player.attacking = False
 
+                        save_progress()
+
                         continue
 
                     # ---------------------------------------------
@@ -1484,49 +1997,91 @@ def main():
                     player.image = rest_image
                     player.current_slash = None
                     player.attacking = False
+
+                    save_progress()
                 if event.key == pygame.K_r and (player.is_dead or game_won):
+                    # NOTE: PLAYER_LEVEL / HEALTH_MULTIPLIER / DAMAGE_MULTIPLIER /
+                    # ATTACK_DAMAGE are already declared `global` above (in the
+                    # level-up key handlers), so they don't need to be redeclared
+                    # here — Python disallows a second `global` statement for a
+                    # name that's already been assigned earlier in the function.
+
+                    # Only send the player back to their last rest point if
+                    # they actually died mid-run and a checkpoint exists.
+                    # Restarting after a WIN (or with no checkpoint yet)
+                    # starts a brand new run from the true beginning.
+                    respawn_at_checkpoint = (
+                        player.is_dead and not game_won and last_checkpoint is not None
+                    )
+
                     # ---------- Rebuild enemies / ghouls / tonics from original spawn points ----------
                     enemies = [
-                        Enemy(x, y, idle)
-                        for x, y in normal_spawns
+                        Enemy(x, y, enemy_img, spawn_id=i)
+                        for i, (x, y) in enumerate(normal_spawns)
                     ]
 
                     enemies += [
-                        Boss(x, y, boss_image)
-                        for x, y in boss_spawns
+                        Boss(x, y, boss_image, spawn_id=i)
+                        for i, (x, y) in enumerate(boss_spawns)
                     ]
-                    ghouls = [Ghoul(x, y, ghoul_image) for x, y in ghoul_spawns]
-                    tonics = [Tonic(x, y, tonic_image) for x, y in tonic_spawns]
+                    ghouls = [
+                        Ghoul(x, y, ghoul_image, spawn_id=i)
+                        for i, (x, y) in enumerate(ghoul_spawns)
+                    ]
+                    tonics = [
+                        Tonic(x, y, tonic_image, spawn_id=i)
+                        for i, (x, y) in enumerate(tonic_spawns)
+                    ]
+                    wolves = [
+                        HurtWolf(x, y, wolf_image)
+                        for x, y in wolf_spawns
+                    ]
 
-                    # ---------- Clear drops / coins ----------
+                    # ---------- Clear drops ----------
                     drops = []
-                    coins = 0
 
-                    # ---------- Reset player ----------
-                    player.max_health = PLAYER_BASE_MAX_HEALTH
-                    player.health = player.max_health
-                    PLAYER_LEVEL = 1
+                    # ---------- Reset player to a clean slate ----------
                     player.is_dead = False
                     player.invuln_timer = 0
-                    player.rect.x = spawn_col * TILE_SIZE + 4
-                    player.rect.y = spawn_row * TILE_SIZE - TILE_SIZE
                     player.vel_x = 0
                     player.vel_y = 0
+                    player.image = player.idle
+
+                    if respawn_at_checkpoint:
+                        # Died mid-run: respawn at the last place you rested,
+                        # with level/coins/kills/tonics restored to that point.
+                        coins, xp_to_next_level, has_rested_once, game_won = apply_save_state(
+                            last_checkpoint, player, enemies, ghouls, tonics, wolves
+                        )
+                    else:
+                        # No checkpoint yet, or starting a fresh run after a
+                        # win: reset everything back to the true beginning.
+                        PLAYER_LEVEL = 1
+                        HEALTH_MULTIPLIER = 1
+                        DAMAGE_MULTIPLIER = 1
+                        ATTACK_DAMAGE = BASE_ATTACK_DAMAGE
+                        player.max_health = PLAYER_BASE_MAX_HEALTH
+                        player.health = player.max_health
+                        player.rect.x = spawn_col * TILE_SIZE + 4
+                        player.rect.y = spawn_row * TILE_SIZE - TILE_SIZE
+                        coins = 0
+                        xp_to_next_level = COIN_DROP_MAX * 5 - 2
+                        has_rested_once = False
+                        game_won = False
+                        last_checkpoint = None
+
+                    camera.x = player.rect.centerx - NATIVE_W / 2
+                    camera.y = player.rect.centery - NATIVE_H / 2
 
                     # ---------- Reset any HUD messages ----------
                     tonic_message = ""
                     tonic_message_timer = 0
-                    game_won = False
                     resting = False
-                    has_rested_once = False
-                    player.image = player.idle
 
         if game_paused_for_levelup:
             continue
-        if game_won:
-            continue
 
-        if not game_paused_for_levelup and not resting:
+        if not game_paused_for_levelup and not resting and not game_won:
 
             player.update(wall_rects)
 
@@ -1561,11 +2116,10 @@ def main():
                         # -----------------------------------------
                         if getattr(enemy, "is_boss", False):
 
-                            
-
                             # Boss defeated
                             if died:
                                 game_won = True
+                                save_progress()  # persist the win so reloading doesn't undo it
 
                         # -----------------------------------------
                         # NORMAL ENEMY DEFEATED
