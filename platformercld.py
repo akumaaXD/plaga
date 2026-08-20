@@ -5,11 +5,7 @@ import random
 import math
 import json
 import hashlib
-
-try:
-    import mysql.connector
-except ImportError:
-    mysql = None  
+import mysql.connector
 
 # ── Constants ────────────────────────────────────────────────────────────────
 NATIVE_W, NATIVE_H = 1920, 1080  # internal render resolution (matches bg art)
