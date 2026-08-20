@@ -4,7 +4,6 @@ import os
 import random
 import math
 import json
-import hashlib
 import mysql.connector
 
 # ── Constants ────────────────────────────────────────────────────────────────
@@ -15,7 +14,7 @@ GRAVITY = 0.7
 JUMP_FORCE = -22
 MOVE_SPEED = 9
 CAMERA_LERP = 0.08  # lower = more lag bwteen input and camera movement
-ATTACK_COOLDOWN = 0.06
+
 # Colours these are placeholders
 SKY_COLOR = (30, 30, 46)
 WALL_COLOR = (80, 80, 110)
@@ -26,7 +25,7 @@ WALL_EDGE_COLOR = (110, 110, 150)
 DAMAGE_MULTIPLIER = 1
 BASE_ATTACK_DAMAGE = 10
 ATTACK_DAMAGE = BASE_ATTACK_DAMAGE * DAMAGE_MULTIPLIER
-ATTACK_RANGE = 100  # reach of the sword hitbox, in px
+ATTACK_RANGE = 110  # reach of the sword hitbox, in px
 ATTACK_HITBOX_HEIGHT = 100
 ACTIVE_ATTACK_FRAMES = (1, 2)  # which attack frames actually deal damage
 
@@ -60,14 +59,12 @@ GHOUL_KNOCKBACK_DURATION = 0.15
 
 KNOCKBACK_FRICTION = 0.85   # how fast knockback velocity decays each frame
 
-# ── MySQL connection settings ─────────────────────────────────────────────────
-# Fill these in for your own MySQL server. The database itself and its tables
-# are created automatically the first time the game runs (see init_db()).
+
 DB_CONFIG = {
     "host": "localhost",
     "port": 3306,
     "user": "root",
-    "password": "root",          # <-- put your MySQL password here
+    "password": "root",
     "database": "plaga_game",
 }
 
@@ -86,7 +83,7 @@ def crop_transparent(image):
 
     return image.subsurface(rect).copy()
 
-
+#Akshay's sounds
 # Global sound placeholders (using MockSound to prevent crashes if files are missing)
 class MockSound:
     def play(self): pass
@@ -219,13 +216,16 @@ def build_wall_rects():
             )
 
             surface = (
-                r == 0
-                or GRID[r - 1][c] in (0, 2, 3, 5,8,9)
+                    r == 0 or
+                    GRID[r - 1][c] == 0
             )
 
             if surface:
+
                 tile_map[(r, c)] = random.choice(grass_tiles)
+
             else:
+
                 tile_map[(r, c)] = random.choice(stone_tiles)
 
     return rects
@@ -295,7 +295,6 @@ class Camera:
 class Player:
     WALK_FRAME_TIME = 0.08
     ATTACK_FRAME_TIME = 0.045
-    
 
     SPRITE_SCALE = 1
 
@@ -341,7 +340,6 @@ class Player:
 
         self.attack_frame = 0
         self.attack_timer = 0
-        self.attack_cooldown_timer = 0
 
         self.attacking = False
 
@@ -379,9 +377,6 @@ class Player:
         if self.attacking:
             return
 
-        if self.attack_cooldown_timer > 0:
-            return
-
         self.attacking = True
         sword_sound.play()
 
@@ -390,7 +385,8 @@ class Player:
 
         self.attack_combo = 1 - self.attack_combo
 
-        self.hit_this_swing = set()
+        self.hit_this_swing = set()  # set of IDs of enemies who were hit by this swing
+
     def get_attack_hitbox(self):
         if not self.attacking or self.attack_frame not in ACTIVE_ATTACK_FRAMES:
             return None
@@ -514,10 +510,10 @@ class Player:
 
                 self.attack_frame += 1
 
-                if self.attack_frame >= 3:
+                if self.attack_frame >= 4:
                     self.attacking = False
+
                     self.attack_frame = 0
-                    self.attack_cooldown_timer = ATTACK_COOLDOWN
 
             # ---------- Slash Animation ----------
 
@@ -525,7 +521,7 @@ class Player:
                 attack_frames = self.attack_left  # left-hand slash
             else:
                 attack_frames = self.attack_right  # right-hand slash
-            SLASH_SCALE = 1.7  # Increase this to make it bigger
+            SLASH_SCALE = 1.6  # Increase this to make it bigger
 
             slash = attack_frames[self.attack_frame]
 
@@ -574,19 +570,11 @@ class Player:
     def update(self, walls):
 
         dt = 1 / FPS
-
-        # ---------- Attack cooldown ----------
-        if self.attack_cooldown_timer > 0:
-            self.attack_cooldown_timer -= dt
-
-            if self.attack_cooldown_timer < 0:
-                self.attack_cooldown_timer = 0
-
         if not self.is_dead:
 
             if self.knockback_timer > 0:
                 self.knockback_timer -= dt
-                self.vel_x *= KNOCKBACK_FRICTION
+                self.vel_x *= KNOCKBACK_FRICTION  # NEW — bleed off horizontal speed
 
             self.handle_input()
 
@@ -595,7 +583,6 @@ class Player:
             self.move_and_collide(walls)
 
             self.animate()
-
         self.update_timers(dt)
 
     def draw(self, surface, camera):
@@ -739,59 +726,48 @@ class Enemy:
 
 BOSS_SPEED = 8
 BOSS_SCALE = 3
-BOSS_MAX_HEALTH = ENEMY_MAX_HEALTH * 15
+BOSS_MAX_HEALTH = ENEMY_MAX_HEALTH * 10
 
 
 class Boss:
 
     def __init__(self, x, y, image, spawn_id=None):
 
-        self.spawn_id = spawn_id
+        self.spawn_id = spawn_id  # index into boss_spawns, used for save/load
 
-        # -----------------------------------------
-        # VISIBLE BOSS IMAGE SIZE
-        # -----------------------------------------
-        image_w = int((TILE_SIZE - 10) * BOSS_SCALE)
-        image_h = int((TILE_SIZE - 20) * BOSS_SCALE)
+        # Make boss 2x the normal enemy size
+        w = int((TILE_SIZE - 10) * BOSS_SCALE)
+        h = int((TILE_SIZE - 6) * BOSS_SCALE)
 
-        self.image = pygame.transform.scale(
-            image,
-            (image_w, image_h)
-        )
-
-        # -----------------------------------------
-        # INVISIBLE COLLISION HITBOX
-        # Shorter than the visible image
-        # -----------------------------------------
-        hitbox_w = image_w
-        hitbox_h = int(image_h * 0.65)
-
+        # Keep the boss standing on the same platform
         self.rect = pygame.Rect(
             x,
-            y + (TILE_SIZE - hitbox_h),
-            hitbox_w,
-            hitbox_h
+            y + (TILE_SIZE - h),
+            w,
+            h
         )
-
-        # -----------------------------------------
-        # Keep the visible image at the SAME level
-        # -----------------------------------------
-        self.image_offset_y = image_h - hitbox_h
 
         self.speed = BOSS_SPEED
         self.direction = 1
+
+        self.image = pygame.transform.scale(
+            image,
+            (w, h)
+        )
 
         # Health
         self.max_health = BOSS_MAX_HEALTH
         self.health = self.max_health
         self.alive = True
 
-        # Knockback
+        # Used by the same knockback system as normal enemies
         self.knockback_timer = 0.0
         self.knockback_vel_x = 0.0
 
+        # Lets the attack code know this is the boss
         self.is_boss = True
-        self.ghoul_spawn_timer = random.uniform(3, 8)
+        self.ghoul_spawn_timer = random.uniform(1, 4)
+
     def update(self, walls):
 
         dt = 1 / FPS
@@ -851,6 +827,8 @@ class Boss:
 
     def draw(self, surface, camera):
 
+        # plagboss.png faces LEFT by default.
+        # Therefore flip it when moving RIGHT.
         img = pygame.transform.flip(
             self.image,
             self.direction > 0,
@@ -859,15 +837,15 @@ class Boss:
 
         boss_rect = self.rect.copy()
 
-        boss_rect.y -= self.image_offset_y
-
-        # YOUR ORIGINAL OFFSET
-        boss_rect.y += 15
+        # Move ONLY the displayed image down.
+        # Collision/feet position stays unchanged.
+        boss_rect.y += 20
 
         surface.blit(
             img,
             camera.apply(boss_rect)
         )
+
     def take_damage(self, amount):
 
         if not self.alive:
@@ -1278,8 +1256,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(50) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL,
-            salt VARCHAR(64) NOT NULL,
+            password VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -1300,22 +1277,6 @@ def init_db():
     conn.close()
 
 
-def hash_password(password, salt_hex=None):
-    """PBKDF2-SHA256 password hashing. Returns (hash_hex, salt_hex)."""
-
-    if salt_hex is None:
-        salt_hex = os.urandom(16).hex()
-
-    digest = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        bytes.fromhex(salt_hex),
-        100_000
-    ).hex()
-
-    return digest, salt_hex
-
-
 def create_user(username, password):
     """Registers a new account. Returns the new user_id, or None if the name is taken."""
 
@@ -1323,11 +1284,9 @@ def create_user(username, password):
     cur = conn.cursor()
 
     try:
-        password_hash, salt = hash_password(password)
-
         cur.execute(
-            "INSERT INTO users (username, password_hash, salt) VALUES (%s, %s, %s)",
-            (username, password_hash, salt)
+            "INSERT INTO users (username, password) VALUES (%s, %s)",
+            (username, password)
         )
 
         conn.commit()
@@ -1348,7 +1307,7 @@ def authenticate_user(username, password):
     cur = conn.cursor()
 
     cur.execute(
-        "SELECT id, password_hash, salt FROM users WHERE username = %s",
+        "SELECT id, password FROM users WHERE username = %s",
         (username,)
     )
 
@@ -1359,10 +1318,9 @@ def authenticate_user(username, password):
     if row is None:
         return None
 
-    user_id, stored_hash, salt = row
-    check_hash, _ = hash_password(password, salt)
+    user_id, stored_password = row
 
-    if check_hash == stored_hash:
+    if password == stored_password:
         return user_id
 
     return None
@@ -1732,7 +1690,7 @@ def main():
 
         attack1 = []
 
-        for i in range(1, 4):
+        for i in range(1, 5):
             attack1.append(
 
                 pygame.image.load(
@@ -1743,7 +1701,7 @@ def main():
 
         attack2 = []
 
-        for i in range(1, 4):
+        for i in range(1, 5):
             attack2.append(pygame.image.load(asset(f"assets/pragassets/praga_attackr_{i}.png")).convert_alpha())
             ghoul_image = pygame.image.load(asset("assets/pragassets/ghoul.png")).convert_alpha()
             tonic_image = pygame.image.load(asset("assets/pragassets/toniic.png")).convert_alpha()
@@ -1828,11 +1786,6 @@ def main():
     has_rested_once = False
     game_won = False
 
-    # Tracks the last spot the player rested at (or the DB save that was
-    # loaded at startup, if any), so dying and pressing R sends the player
-    # back there instead of the very start of the level.
-    last_checkpoint = None
-
     if db_available and user_id is not None:
         try:
             saved_state = load_game_state(user_id)
@@ -1846,28 +1799,19 @@ def main():
             )
             camera.x = player.rect.centerx - NATIVE_W / 2
             camera.y = player.rect.centery - NATIVE_H / 2
-            last_checkpoint = saved_state
 
     def save_progress():
-        """Snapshots the current run as the checkpoint to respawn at on death,
-        and (if an account is logged in) writes it to the MySQL save slot too.
-        Called whenever the player rests, AND whenever the boss is defeated —
-        that way quitting right after a win doesn't roll the save back to the
-        last time they rested."""
-
-        nonlocal last_checkpoint
-
-        state = build_save_state(
-            player, enemies, ghouls, tonics, coins,
-            xp_to_next_level, has_rested_once, game_won,
-            normal_spawns, boss_spawns, ghoul_spawns
-        )
-        last_checkpoint = state
+        """Writes the current run to the player's MySQL save slot. Called every time they rest."""
 
         if not (db_available and user_id is not None):
             return
 
         try:
+            state = build_save_state(
+                player, enemies, ghouls, tonics, coins,
+                xp_to_next_level, has_rested_once, game_won,
+                normal_spawns, boss_spawns, ghoul_spawns
+            )
             save_game_state(user_id, state)
         except Exception as e:
             print(f"Warning: could not save progress ({e})")
@@ -2015,23 +1959,9 @@ def main():
 
                     save_progress()
                 if event.key == pygame.K_r and (player.is_dead or game_won):
-                    # NOTE: PLAYER_LEVEL / HEALTH_MULTIPLIER / DAMAGE_MULTIPLIER /
-                    # ATTACK_DAMAGE are already declared `global` above (in the
-                    # level-up key handlers), so they don't need to be redeclared
-                    # here — Python disallows a second `global` statement for a
-                    # name that's already been assigned earlier in the function.
-
-                    # Only send the player back to their last rest point if
-                    # they actually died mid-run and a checkpoint exists.
-                    # Restarting after a WIN (or with no checkpoint yet)
-                    # starts a brand new run from the true beginning.
-                    respawn_at_checkpoint = (
-                        player.is_dead and not game_won and last_checkpoint is not None
-                    )
-
                     # ---------- Rebuild enemies / ghouls / tonics from original spawn points ----------
                     enemies = [
-                        Enemy(x, y, enemy_img, spawn_id=i)
+                        Enemy(x, y, idle, spawn_id=i)
                         for i, (x, y) in enumerate(normal_spawns)
                     ]
 
@@ -2047,56 +1977,36 @@ def main():
                         Tonic(x, y, tonic_image, spawn_id=i)
                         for i, (x, y) in enumerate(tonic_spawns)
                     ]
-                    wolves = [
-                        HurtWolf(x, y, wolf_image)
-                        for x, y in wolf_spawns
-                    ]
 
-                    # ---------- Clear drops ----------
+                    # ---------- Clear drops / coins ----------
                     drops = []
+                    coins = 0
 
-                    # ---------- Reset player to a clean slate ----------
+                    # ---------- Reset player ----------
+                    player.max_health = PLAYER_BASE_MAX_HEALTH
+                    player.health = player.max_health
+                    PLAYER_LEVEL = 1
                     player.is_dead = False
                     player.invuln_timer = 0
+                    player.rect.x = spawn_col * TILE_SIZE + 4
+                    player.rect.y = spawn_row * TILE_SIZE - TILE_SIZE
                     player.vel_x = 0
                     player.vel_y = 0
-                    player.image = player.idle
-
-                    if respawn_at_checkpoint:
-                        # Died mid-run: respawn at the last place you rested,
-                        # with level/coins/kills/tonics restored to that point.
-                        coins, xp_to_next_level, has_rested_once, game_won = apply_save_state(
-                            last_checkpoint, player, enemies, ghouls, tonics, wolves
-                        )
-                    else:
-                        # No checkpoint yet, or starting a fresh run after a
-                        # win: reset everything back to the true beginning.
-                        PLAYER_LEVEL = 1
-                        HEALTH_MULTIPLIER = 1
-                        DAMAGE_MULTIPLIER = 1
-                        ATTACK_DAMAGE = BASE_ATTACK_DAMAGE
-                        player.max_health = PLAYER_BASE_MAX_HEALTH
-                        player.health = player.max_health
-                        player.rect.x = spawn_col * TILE_SIZE + 4
-                        player.rect.y = spawn_row * TILE_SIZE - TILE_SIZE
-                        coins = 0
-                        xp_to_next_level = COIN_DROP_MAX * 5 - 2
-                        has_rested_once = False
-                        game_won = False
-                        last_checkpoint = None
-
-                    camera.x = player.rect.centerx - NATIVE_W / 2
-                    camera.y = player.rect.centery - NATIVE_H / 2
 
                     # ---------- Reset any HUD messages ----------
                     tonic_message = ""
                     tonic_message_timer = 0
+                    game_won = False
                     resting = False
+                    has_rested_once = False
+                    player.image = player.idle
 
         if game_paused_for_levelup:
             continue
+        if game_won:
+            continue
 
-        if not game_paused_for_levelup and not resting and not game_won:
+        if not game_paused_for_levelup and not resting:
 
             player.update(wall_rects)
 
@@ -2131,10 +2041,11 @@ def main():
                         # -----------------------------------------
                         if getattr(enemy, "is_boss", False):
 
+                            
+
                             # Boss defeated
                             if died:
                                 game_won = True
-                                save_progress()  # persist the win so reloading doesn't undo it
 
                         # -----------------------------------------
                         # NORMAL ENEMY DEFEATED
